@@ -139,9 +139,10 @@ Every option is documented inside the files themselves with YAML comments.
 
 ## 📚 Source & Support
 
-- **Repository:** [github.com/Recilia/HonamiSpigot](https://github.com/Recilia/HonamiSpigot) — clone with `git clone https://github.com/Recilia/HonamiSpigot.git`
+- **Repository:** [github.com/Recilia/HonamiSpigot](https://github.com/Recilia/HonamiSpigot)
 - **Discord:** @ncros
-- **Wiki:** knockback configuration and tuning guides
+
+-clone with `git clone https://github.com/Recilia/HonamiSpigot.git`
 
 
 ---
