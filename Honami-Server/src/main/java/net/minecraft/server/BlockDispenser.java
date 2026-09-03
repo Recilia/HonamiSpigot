@@ -1,0 +1,191 @@
+package net.minecraft.server;
+
+import java.util.Random;
+
+public class BlockDispenser extends BlockContainer {
+
+	public static final BlockStateDirection FACING = BlockStateDirection.of("facing");
+	public static final BlockStateBoolean TRIGGERED = BlockStateBoolean.of("triggered");
+	public static final RegistryDefault<Item, IDispenseBehavior> REGISTRY = new RegistryDefault(
+			new DispenseBehaviorItem());
+	protected Random O = new Random();
+	public static boolean eventFired = false; 
+
+	protected BlockDispenser() {
+		super(Material.STONE);
+		this.j(this.blockStateList.getBlockData().set(BlockDispenser.FACING, EnumDirection.NORTH)
+				.set(BlockDispenser.TRIGGERED, Boolean.valueOf(false)));
+		this.a(CreativeModeTab.d);
+	}
+
+	@Override
+	public int a(World world) {
+		return 4;
+	}
+
+	
+
+	
+
+	@Override
+	public boolean interact(World world, BlockPosition blockposition, IBlockData iblockdata, EntityHuman entityhuman,
+			EnumDirection enumdirection, float f, float f1, float f2) {
+		if (world.isClientSide) {
+			return true;
+		} else {
+			TileEntity tileentity = world.getTileEntity(blockposition);
+
+			if (tileentity instanceof TileEntityDispenser) {
+				entityhuman.openContainer((TileEntityDispenser) tileentity);
+				if (tileentity instanceof TileEntityDropper) {
+					entityhuman.b(StatisticList.O);
+				} else {
+					entityhuman.b(StatisticList.Q);
+				}
+			}
+
+			return true;
+		}
+	}
+
+	public void dispense(World world, BlockPosition blockposition) {
+		SourceBlock sourceblock = new SourceBlock(world, blockposition);
+		TileEntityDispenser tileentitydispenser = (TileEntityDispenser) sourceblock.getTileEntity();
+
+		if (tileentitydispenser != null) {
+			int i = tileentitydispenser.m();
+
+			if (i < 0) {
+				world.triggerEffect(1001, blockposition, 0);
+			} else {
+				ItemStack itemstack = tileentitydispenser.getItem(i);
+				IDispenseBehavior idispensebehavior = this.a(itemstack);
+
+				if (idispensebehavior != IDispenseBehavior.NONE) {
+					ItemStack itemstack1 = idispensebehavior.a(sourceblock, itemstack);
+					eventFired = false; 
+
+					tileentitydispenser.setItem(i, itemstack1.count <= 0 ? null : itemstack1);
+				}
+
+			}
+		}
+	}
+
+	protected IDispenseBehavior a(ItemStack itemstack) {
+		return BlockDispenser.REGISTRY.get(itemstack == null ? null : itemstack.getItem());
+	}
+
+	@Override
+	public void doPhysics(World world, BlockPosition blockposition, IBlockData iblockdata, Block block) {
+		boolean flag = world.isBlockIndirectlyPowered(blockposition)
+				|| world.isBlockIndirectlyPowered(blockposition.up());
+		boolean flag1 = iblockdata.get(BlockDispenser.TRIGGERED).booleanValue();
+
+		if (flag && !flag1) {
+			world.a(blockposition, this, this.a(world));
+			world.setTypeAndData(blockposition, iblockdata.set(BlockDispenser.TRIGGERED, Boolean.valueOf(true)), 4);
+		} else if (!flag && flag1) {
+			world.setTypeAndData(blockposition, iblockdata.set(BlockDispenser.TRIGGERED, Boolean.valueOf(false)), 4);
+		}
+
+	}
+
+	@Override
+	public void b(World world, BlockPosition blockposition, IBlockData iblockdata, Random random) {
+		if (!world.isClientSide) {
+			this.dispense(world, blockposition);
+		}
+
+	}
+
+	@Override
+	public TileEntity a(World world, int i) {
+		return new TileEntityDispenser();
+	}
+
+	@Override
+	public IBlockData getPlacedState(World world, BlockPosition blockposition, EnumDirection enumdirection, float f,
+			float f1, float f2, int i, EntityLiving entityliving) {
+		return this.getBlockData().set(BlockDispenser.FACING, BlockPiston.a(world, blockposition, entityliving))
+				.set(BlockDispenser.TRIGGERED, Boolean.valueOf(false));
+	}
+
+	@Override
+	public void postPlace(World world, BlockPosition blockposition, IBlockData iblockdata, EntityLiving entityliving,
+			ItemStack itemstack) {
+		world.setTypeAndData(blockposition,
+				iblockdata.set(BlockDispenser.FACING, BlockPiston.a(world, blockposition, entityliving)), 2);
+		if (itemstack.hasName()) {
+			TileEntity tileentity = world.getTileEntity(blockposition);
+
+			if (tileentity instanceof TileEntityDispenser) {
+				((TileEntityDispenser) tileentity).a(itemstack.getName());
+			}
+		}
+
+	}
+
+	@Override
+	public void remove(World world, BlockPosition blockposition, IBlockData iblockdata) {
+		TileEntity tileentity = world.getTileEntity(blockposition);
+
+		if (tileentity instanceof TileEntityDispenser) {
+			InventoryUtils.dropInventory(world, blockposition, (TileEntityDispenser) tileentity);
+			world.updateAdjacentComparators(blockposition, this);
+		}
+
+		super.remove(world, blockposition, iblockdata);
+	}
+
+	public static IPosition a(ISourceBlock isourceblock) {
+		EnumDirection enumdirection = b(isourceblock.f());
+		double d0 = isourceblock.getX() + 0.7D * enumdirection.getAdjacentX();
+		double d1 = isourceblock.getY() + 0.7D * enumdirection.getAdjacentY();
+		double d2 = isourceblock.getZ() + 0.7D * enumdirection.getAdjacentZ();
+
+		return new Position(d0, d1, d2);
+	}
+
+	public static EnumDirection b(int i) {
+		return EnumDirection.fromType1(i & 7);
+	}
+
+	@Override
+	public boolean isComplexRedstone() {
+		return true;
+	}
+
+	@Override
+	public int l(World world, BlockPosition blockposition) {
+		return Container.a(world.getTileEntity(blockposition));
+	}
+
+	@Override
+	public int b() {
+		return 3;
+	}
+
+	@Override
+	public IBlockData fromLegacyData(int i) {
+		return this.getBlockData().set(BlockDispenser.FACING, b(i)).set(BlockDispenser.TRIGGERED,
+				Boolean.valueOf((i & 8) > 0));
+	}
+
+	@Override
+	public int toLegacyData(IBlockData iblockdata) {
+		byte b0 = 0;
+		int i = b0 | iblockdata.get(BlockDispenser.FACING).a();
+
+		if (iblockdata.get(BlockDispenser.TRIGGERED).booleanValue()) {
+			i |= 8;
+		}
+
+		return i;
+	}
+
+	@Override
+	protected BlockStateList getStateList() {
+		return new BlockStateList(this, new IBlockState[] { BlockDispenser.FACING, BlockDispenser.TRIGGERED });
+	}
+}
