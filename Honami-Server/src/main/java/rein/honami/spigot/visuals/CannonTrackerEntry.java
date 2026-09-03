@@ -1,0 +1,227 @@
+package rein.honami.spigot.visuals;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+import rein.honami.spigot.config.HonamiConfig;
+
+import net.minecraft.server.DataWatcher;
+import net.minecraft.server.Entity;
+import net.minecraft.server.EntityArrow;
+import net.minecraft.server.EntityHuman;
+import net.minecraft.server.EntityPlayer;
+import net.minecraft.server.EntityProjectile;
+import net.minecraft.server.EntityTracker;
+import net.minecraft.server.EntityTrackerEntry;
+import net.minecraft.server.Packet;
+import net.minecraft.server.PacketPlayOutAttachEntity;
+import net.minecraft.server.PacketPlayOutEntityMetadata;
+import net.minecraft.server.PacketPlayOutEntityTeleport;
+import net.minecraft.server.PacketPlayOutEntityVelocity;
+
+public class CannonTrackerEntry extends EntityTrackerEntry {
+
+	private boolean movingX;
+	private boolean movingY;
+	private boolean movingZ;
+
+	private double updateX;
+	private double updateY;
+	private double updateZ;
+
+	private List<EntityPlayer> toRemove = new ArrayList<>();
+	private EntityTracker entityTracker;
+	private int addRemoveRate;
+	private int addRemoveCooldown;
+	private boolean withinNoTrack = false;
+
+	public CannonTrackerEntry(EntityTracker entityTracker, Entity entity, int i, int j, boolean flag) {
+		super(entityTracker, entity, i, j, flag);
+		this.entityTracker = entityTracker;
+		this.tracker = entity;
+		this.movingX = entity.motX != 0.0;
+		this.movingY = true;
+		this.movingZ = entity.motZ != 0.0;
+		this.updateX = entity.locX;
+		this.updateY = entity.locY;
+		this.updateZ = entity.locZ;
+
+		if (HonamiConfig.disableTracking) {
+			this.addRemoveRate = 100;
+		} else if (this.tracker instanceof EntityArrow || this.tracker instanceof EntityProjectile) {
+			this.addRemoveRate = 5; 
+		} else if (this.tracker instanceof EntityPlayer) {
+			this.addRemoveRate = 5; 
+		} else {
+			this.addRemoveRate = 10; 
+		}
+		this.addRemoveCooldown = this.tracker.getId() % addRemoveRate;
+	}
+
+	@Override
+	public void update() {
+		this.withinNoTrack = this.withinNoTrack();
+		if (--this.addRemoveCooldown <= 0) {
+			this.removeFarPlayers();
+			this.addNearPlayers();
+			this.addRemoveCooldown = this.addRemoveRate;
+		}
+
+		this.track(null);
+	}
+
+	private void removeFarPlayers() {
+		if (this.withinNoTrack) {
+			toRemove.addAll(this.trackedPlayers);
+			processToRemove();
+			return;
+		}
+
+		for (EntityPlayer entityplayer : this.trackedPlayers) {
+			double d0 = entityplayer.locX - this.tracker.locX;
+			double d1 = entityplayer.locZ - this.tracker.locZ;
+			int range = this.getRange();
+
+			if (!(d0 >= (-range) && d0 <= range && d1 >= (-range) && d1 <= range) || withinNoTrack()) {
+				toRemove.add(entityplayer);
+			}
+		}
+
+		this.processToRemove();
+	}
+
+	@Override
+	public void processToRemove() {
+		for (EntityPlayer entityPlayer : toRemove) {
+			entityPlayer.d(this.tracker);
+			this.trackedPlayers.remove(entityPlayer);
+		}
+
+		toRemove.clear();
+	}
+
+	@Override
+	public void addNearPlayers() {
+		addNearPlayers(false);
+	}
+
+	private void addNearPlayers(boolean updateCooldown) {
+		if (this.withinNoTrack) {
+			return;
+		}
+		if (updateCooldown) {
+			this.addRemoveCooldown = addRemoveRate;
+		}
+		this.tracker.world.playerMap.forEachNearby(this.tracker.locX, this.tracker.locY, this.tracker.locZ,
+				this.getRange(), false, addNearPlayersConsumer);
+	}
+
+	private boolean withinNoTrack() {
+		return this.withinNoTrack(this.tracker);
+	}
+
+	private boolean withinNoTrack(Entity entity) {
+		if (!(entity instanceof EntityPlayer)) {
+			return false; 
+		}
+		double xDistSqrd = entity.locX * entity.locX;
+		double zDistSqrd = entity.locZ * entity.locZ;
+
+		int noTrackDistanceSqrd = entityTracker.getNoTrackDistance() * entityTracker.getNoTrackDistance();
+		return noTrackDistanceSqrd != 0 && xDistSqrd <= noTrackDistanceSqrd && zDistSqrd <= noTrackDistanceSqrd;
+	}
+
+	private final Consumer<EntityPlayer> addNearPlayersConsumer = new Consumer<EntityPlayer>() {
+
+		@Override
+		public void accept(EntityPlayer entityPlayer) {
+			updatePlayer(entityPlayer);
+		}
+	};
+
+	@Override
+	public void track(List<EntityHuman> list) {
+		boolean motionX = this.tracker.motX != 0.0;
+		boolean motionY = this.tracker.motY != 0.0;
+		boolean motionZ = this.tracker.motZ != 0.0;
+
+		
+		if (!this.tracker.ai && motionX == movingX && motionY == movingY && motionZ == movingZ) {
+			return;
+		}
+
+		if (this.tracker.e(updateX, updateY, updateZ) > 16.0D) {
+			
+			this.updateX = this.tracker.locX;
+			this.updateY = this.tracker.locY;
+			this.updateZ = this.tracker.locZ;
+		}
+
+		if (motionX || motionY || motionZ) {
+			this.broadcastUpdate();
+		}
+
+		this.tracker.ai = false;
+		this.movingX = motionX;
+		this.movingY = motionY;
+		this.movingZ = motionZ;
+	}
+
+	private void broadcastUpdate() {
+		DataWatcher datawatcher = this.tracker.getDataWatcher();
+
+		if (datawatcher.a()) {
+			this.broadcastIncludingSelfInternal(new PacketPlayOutEntityMetadata(this.tracker.getId(), datawatcher, false));
+		}
+
+		if (this.tracker.lastX != this.tracker.locX || this.tracker.lastY != this.tracker.locY
+				|| this.tracker.lastZ != this.tracker.locZ) {
+			this.broadcastInternal(new PacketPlayOutEntityTeleport(this.tracker));
+		}
+
+		this.broadcastInternal(new PacketPlayOutEntityVelocity(this.tracker));
+	}
+
+	@Override
+	public void updatePlayer(EntityPlayer entityplayer) {
+		
+		if (this.c(entityplayer) && this.tracker.h(entityplayer) < 4096.0D) {
+			if (this.tracker instanceof EntityPlayer && withinNoTrack()) {
+				return;
+			}
+			if (this.trackedPlayers.contains(entityplayer)
+					|| (!this.e(entityplayer) && !this.tracker.attachedToPlayer)) {
+				return;
+			}
+
+			this.trackedPlayerMap.put(entityplayer, true); 
+
+			
+
+			Packet<?> packet = this.c(); 
+			if (packet == null) {
+				return; 
+			}
+
+			entityplayer.playerConnection.queuePacket(packet);
+
+			if (this.tracker.getCustomNameVisible()) {
+				entityplayer.playerConnection.queuePacket(
+						new PacketPlayOutEntityMetadata(this.tracker.getId(), this.tracker.getDataWatcher(), true));
+			}
+
+			entityplayer.playerConnection.queuePacket(new PacketPlayOutEntityVelocity(this.tracker.getId(),
+					this.tracker.motX, this.tracker.motY, this.tracker.motZ));
+
+			if (this.tracker.vehicle != null) {
+				entityplayer.playerConnection
+						.queuePacket(new PacketPlayOutAttachEntity(0, this.tracker, this.tracker.vehicle));
+			}
+		} else if (this.trackedPlayers.contains(entityplayer)) {
+			this.trackedPlayers.remove(entityplayer);
+			entityplayer.d(this.tracker);
+		}
+	}
+
+}
