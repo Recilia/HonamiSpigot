@@ -1,0 +1,103 @@
+package net.minecraft.server;
+
+public class RecipeMapClone extends ShapelessRecipes implements IRecipe { 
+
+	public RecipeMapClone() {
+		super(new ItemStack(Items.MAP, 0, -1), java.util.Arrays.asList(new ItemStack(Items.MAP, 0, 0)));
+	}
+
+	@Override
+	public boolean a(InventoryCrafting inventorycrafting, World world) {
+		int i = 0;
+		ItemStack itemstack = null;
+
+		for (int j = 0; j < inventorycrafting.getSize(); ++j) {
+			ItemStack itemstack1 = inventorycrafting.getItem(j);
+
+			if (itemstack1 != null) {
+				if (itemstack1.getItem() == Items.FILLED_MAP) {
+					if (itemstack != null) {
+						return false;
+					}
+
+					itemstack = itemstack1;
+				} else {
+					if (itemstack1.getItem() != Items.MAP) {
+						return false;
+					}
+
+					++i;
+				}
+			}
+		}
+
+		return itemstack != null && i > 0;
+	}
+
+	@Override
+	public ItemStack craftItem(InventoryCrafting inventorycrafting) {
+		int i = 0;
+		ItemStack itemstack = null;
+
+		for (int j = 0; j < inventorycrafting.getSize(); ++j) {
+			ItemStack itemstack1 = inventorycrafting.getItem(j);
+
+			if (itemstack1 != null) {
+				if (itemstack1.getItem() == Items.FILLED_MAP) {
+					if (itemstack != null) {
+						return null;
+					}
+
+					itemstack = itemstack1;
+				} else {
+					if (itemstack1.getItem() != Items.MAP) {
+						return null;
+					}
+
+					++i;
+				}
+			}
+		}
+
+		if (itemstack != null && i >= 1) {
+			ItemStack itemstack2 = new ItemStack(Items.FILLED_MAP, i + 1, itemstack.getData());
+
+			if (itemstack.hasName()) {
+				itemstack2.c(itemstack.getName());
+			}
+
+			if (itemstack.hasTag()) {
+				itemstack2.setTag(itemstack.getTag());
+			}
+
+			return itemstack2;
+		} else {
+			return null;
+		}
+	}
+
+	@Override
+	public int a() {
+		return 9;
+	}
+
+	@Override
+	public ItemStack b() {
+		return null;
+	}
+
+	@Override
+	public ItemStack[] b(InventoryCrafting inventorycrafting) {
+		ItemStack[] aitemstack = new ItemStack[inventorycrafting.getSize()];
+
+		for (int i = 0; i < aitemstack.length; ++i) {
+			ItemStack itemstack = inventorycrafting.getItem(i);
+
+			if (itemstack != null && itemstack.getItem().r()) {
+				aitemstack[i] = new ItemStack(itemstack.getItem().q());
+			}
+		}
+
+		return aitemstack;
+	}
+}
