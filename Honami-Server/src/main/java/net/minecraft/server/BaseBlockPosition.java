@@ -1,0 +1,98 @@
+package net.minecraft.server;
+
+import com.google.common.base.Objects;
+
+public class BaseBlockPosition implements Comparable<BaseBlockPosition> {
+
+	public static final BaseBlockPosition ZERO = new BaseBlockPosition(0, 0, 0);
+	
+	protected int a;
+	protected int c;
+	protected int d;
+
+	public BaseBlockPosition(int i, int j, int k) {
+		this.a = i;
+		this.c = j;
+		this.d = k;
+	}
+
+	public BaseBlockPosition(double d0, double d1, double d2) {
+		this(MathHelper.floor(d0), MathHelper.floor(d1), MathHelper.floor(d2));
+	}
+
+	@Override
+	public final boolean equals(Object object) { 
+		if (this == object) {
+			return true;
+		} else if (!(object instanceof BaseBlockPosition)) {
+			return false;
+		} else {
+			BaseBlockPosition baseblockposition = (BaseBlockPosition) object;
+
+			return this.getX() != baseblockposition.getX() ? false
+					: (this.getY() != baseblockposition.getY() ? false : this.getZ() == baseblockposition.getZ());
+		}
+	}
+
+	@Override
+	public final int hashCode() {
+		return (this.getY() + this.getZ() * 31) * 31 + this.getX();
+	}
+
+	public int g(BaseBlockPosition baseblockposition) {
+		return this.getY() == baseblockposition.getY()
+				? (this.getZ() == baseblockposition.getZ() ? this.getX() - baseblockposition.getX()
+						: this.getZ() - baseblockposition.getZ())
+				: this.getY() - baseblockposition.getY();
+	}
+
+	
+	public final int getX() {
+		return this.a;
+	}
+
+	public final int getY() {
+		return this.c;
+	}
+
+	public final int getZ() {
+		return this.d;
+	}
+
+	public BaseBlockPosition d(BaseBlockPosition baseblockposition) {
+		return new BaseBlockPosition(this.getY() * baseblockposition.getZ() - this.getZ() * baseblockposition.getY(),
+				this.getZ() * baseblockposition.getX() - this.getX() * baseblockposition.getZ(),
+				this.getX() * baseblockposition.getY() - this.getY() * baseblockposition.getX());
+	}
+
+	public double c(double d0, double d1, double d2) {
+		double d3 = this.getX() - d0;
+		double d4 = this.getY() - d1;
+		double d5 = this.getZ() - d2;
+
+		return d3 * d3 + d4 * d4 + d5 * d5;
+	}
+
+	public double d(double d0, double d1, double d2) {
+		double d3 = this.getX() + 0.5D - d0;
+		double d4 = this.getY() + 0.5D - d1;
+		double d5 = this.getZ() + 0.5D - d2;
+
+		return d3 * d3 + d4 * d4 + d5 * d5;
+	}
+
+	public double i(BaseBlockPosition baseblockposition) {
+		return this.c(baseblockposition.getX(), baseblockposition.getY(), baseblockposition.getZ());
+	}
+
+	@Override
+	public String toString() {
+		return Objects.toStringHelper(this).add("x", this.getX()).add("y", this.getY()).add("z", this.getZ())
+				.toString();
+	}
+
+	@Override
+	public int compareTo(BaseBlockPosition object) {
+		return this.g(object);
+	}
+}
