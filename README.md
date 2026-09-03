@@ -7,8 +7,8 @@
 <h1 align="center">⚡ Honami</h1>
 
 <p align="center">
-  <b>High-performance, feature-packed 1.8.8 Spigot fork for the people who know 1.8 PvP was peak Minecraft.</b><br/>
-  Paper-grade engineering. CarbonSpigot-grade PvP depth. ImanitySpigot-grade polish. All open, all free.
+  <b>High-performance, feature-packed 1.8.8 Spigot fork for Minecraft.</b><br/>
+  Paper-grade engineering. CarbonSpigot & ImanitySpigot-grade depth. 
 </p>
 
 <p align="center">
