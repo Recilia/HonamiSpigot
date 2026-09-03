@@ -1,0 +1,47 @@
+package rein.honami.spigot.taco;
+
+import net.minecraft.server.AxisAlignedBB;
+import net.minecraft.server.BlockPosition;
+import net.minecraft.server.Entity;
+import net.minecraft.server.MathHelper;
+import net.minecraft.server.TileEntityHopper;
+import net.minecraft.server.World;
+
+public interface HopperPusher {
+
+	default TileEntityHopper findHopper() {
+		int y1 = MathHelper.floor(getY());
+		for (int y = y1; y > y1 - 2; y--) {
+			TileEntityHopper hopper = HopperHelper.getHopper(getWorld(), new BlockPosition(getX(), y, getZ()));
+			if (hopper != null && y1 - y < 2) {
+				return hopper;
+			}
+		}
+		return null;
+	}
+
+	boolean acceptItem(TileEntityHopper hopper);
+
+	default boolean tryPutInHopper() {
+		if (!getWorld().honamiTacoConfig.isHopperPushBased) {
+			return false;
+		}
+		TileEntityHopper hopper = findHopper();
+		return hopper != null && hopper.canAcceptItems() && acceptItem(hopper);
+	}
+
+	AxisAlignedBB getBoundingBox();
+
+	World getWorld();
+
+	default double getX() {
+		return ((Entity) this).locX;
+	}
+
+	default double getY() {
+		return ((Entity) this).locY;
+	}
+
+	default double getZ() { return ((Entity) this).locZ; }
+
+}
