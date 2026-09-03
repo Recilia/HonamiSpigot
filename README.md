@@ -142,7 +142,7 @@ Every option is documented inside the files themselves with YAML comments.
 - **Repository:** [github.com/Recilia/HonamiSpigot](https://github.com/Recilia/HonamiSpigot)
 - **Discord:** @ncros
 
--clone with `git clone https://github.com/Recilia/HonamiSpigot.git`
+- clone with `git clone https://github.com/Recilia/HonamiSpigot.git`
 
 
 ---
